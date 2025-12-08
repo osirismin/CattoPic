@@ -59,7 +59,7 @@ export const buildHtmlImgTag = (url: string, altText: string): string => {
  * 复制图片链接（原始格式）
  */
 export const copyOriginalUrl = async (image: ImageFile): Promise<boolean> => {
-  const url = getFullUrl(image.urls?.original || image.url);
+  const url = getFullUrl(image.urls?.original || '');
   return copyToClipboard(url);
 };
 
@@ -67,7 +67,7 @@ export const copyOriginalUrl = async (image: ImageFile): Promise<boolean> => {
  * 复制图片链接（WebP格式）
  */
 export const copyWebpUrl = async (image: ImageFile): Promise<boolean> => {
-  const url = getFullUrl(image.urls?.webp || "");
+  const url = getFullUrl(image.urls?.webp || '');
   return copyToClipboard(url);
 };
 
@@ -75,7 +75,7 @@ export const copyWebpUrl = async (image: ImageFile): Promise<boolean> => {
  * 复制图片链接（AVIF格式）
  */
 export const copyAvifUrl = async (image: ImageFile): Promise<boolean> => {
-  const url = getFullUrl(image.urls?.avif || "");
+  const url = getFullUrl(image.urls?.avif || '');
   return copyToClipboard(url);
 };
 
@@ -84,8 +84,8 @@ export const copyAvifUrl = async (image: ImageFile): Promise<boolean> => {
  */
 export const copyMarkdownLink = async (image: ImageFile): Promise<boolean> => {
   // 优先使用WebP链接
-  const url = getFullUrl(image.urls?.webp || image.urls?.original || image.url);
-  const markdown = buildMarkdownLink(url, image.filename);
+  const url = getFullUrl(image.urls?.webp || image.urls?.original || '');
+  const markdown = buildMarkdownLink(url, image.originalName);
   return copyToClipboard(markdown);
 };
 
@@ -94,7 +94,7 @@ export const copyMarkdownLink = async (image: ImageFile): Promise<boolean> => {
  */
 export const copyHtmlImgTag = async (image: ImageFile): Promise<boolean> => {
   // 优先使用WebP链接
-  const url = getFullUrl(image.urls?.webp || image.urls?.original || image.url);
-  const html = buildHtmlImgTag(url, image.filename);
+  const url = getFullUrl(image.urls?.webp || image.urls?.original || '');
+  const html = buildHtmlImgTag(url, image.originalName);
   return copyToClipboard(html);
 };

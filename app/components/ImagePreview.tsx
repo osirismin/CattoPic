@@ -121,7 +121,7 @@ export const ImagePreview = ({
     <div className="relative w-full h-full">
       <Image
         src={imageUrl}
-        alt={image.originalName}
+        alt={image.originalName || ''}
         fill
         className={`object-contain transition-opacity duration-300 ${
           isLoading ? "opacity-0" : "opacity-100"
