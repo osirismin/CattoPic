@@ -42,13 +42,11 @@ const remotePatterns = parseRemotePatterns(process.env.NEXT_PUBLIC_REMOTE_PATTER
 
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   output: isStaticExport ? 'export' : undefined,
   images: {
     unoptimized: isStaticExport,
     remotePatterns: remotePatterns
   },
-  optimizeFonts: true,
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '',
     NEXT_PUBLIC_REMOTE_PATTERNS: process.env.NEXT_PUBLIC_REMOTE_PATTERNS || '',

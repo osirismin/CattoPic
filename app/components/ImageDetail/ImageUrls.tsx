@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type JSX } from 'react';
 import { CheckIcon, CopyIcon, ImageIcon, FileIcon, Link1Icon, EyeOpenIcon } from '../ui/icons'
 import { ImageData, CopyStatus } from '../../types/image'
 import { getFullUrl } from '../../utils/baseUrl'
