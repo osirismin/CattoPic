@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTags } from '../../hooks/useTags';
 import TagList from './TagList';
@@ -26,6 +26,11 @@ export default function TagManagement() {
     selectAllTags,
     clearSelection,
   } = useTags();
+
+  // 组件挂载时立即刷新标签列表
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
 
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [deletingTag, setDeletingTag] = useState<Tag | null>(null);
