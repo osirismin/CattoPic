@@ -273,3 +273,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 ## License
 
 [GPL-3.0](./LICENSE)
+
