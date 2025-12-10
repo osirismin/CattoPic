@@ -8,8 +8,6 @@ import { CompressionService, parseCompressionOptions } from '../services/compres
 import { successResponse, errorResponse } from '../utils/response';
 import { generateImageId, parseTags, parseNumber } from '../utils/validation';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
 /**
  * Single file upload handler - processes one image with full parallelization
  * Used by frontend concurrent upload for per-file progress tracking
@@ -24,10 +22,6 @@ export async function uploadSingleHandler(c: Context<{ Bindings: Env }>): Promis
 
     if (!file || typeof file === 'string') {
       return errorResponse('No file provided');
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return errorResponse(`File exceeds maximum size of 10MB`);
     }
 
     const tags = parseTags(tagsString);

@@ -6,6 +6,9 @@ import ExpirySelector from './ExpirySelector'
 import TagSelector from './upload/TagSelector'
 import { api } from '../utils/request'
 import { UploadIcon, ExclamationTriangleIcon, ImageIcon } from '../components/ui/icons'
+import { formatFileSize } from '../utils/imageUtils'
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 interface UploadSectionProps {
   onUpload: (files: File[], expiryMinutes: number, tags: string[]) => Promise<void>
@@ -38,6 +41,7 @@ export default function UploadSection({
   const [fileDetails, setFileDetails] = useState<{ id: string, file: File }[]>([])
   const [wasUploading, setWasUploading] = useState(false)
   const [exceedsLimit, setExceedsLimit] = useState(false)
+  const [oversizedFiles, setOversizedFiles] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [availableTags, setAvailableTags] = useState<string[]>([])
 
@@ -102,20 +106,29 @@ export default function UploadSection({
     // 获取当前的文件列表
     const currentFiles = [...selectedFiles];
     const currentDetails = [...fileDetails];
-    
+
     // 创建新的文件列表
     const newFiles = [...currentFiles];
     const newDetails = [...currentDetails];
-    
+
+    // 记录超大文件
+    const oversized: string[] = [];
+
     // 添加新选择的文件
     for (const file of files) {
+      // 检查文件大小是否超过限制
+      if (file.size > MAX_FILE_SIZE) {
+        oversized.push(`${file.name} (${formatFileSize(file.size)})`);
+        continue;
+      }
+
       // 检查文件是否已经存在于列表中
-      const isDuplicate = currentFiles.some(existingFile => 
-        existingFile.name === file.name && 
-        existingFile.size === file.size && 
+      const isDuplicate = currentFiles.some(existingFile =>
+        existingFile.name === file.name &&
+        existingFile.size === file.size &&
         existingFile.lastModified === file.lastModified
       );
-      
+
       // 只添加不重复的文件
       if (!isDuplicate) {
         newFiles.push(file);
@@ -125,6 +138,9 @@ export default function UploadSection({
         });
       }
     }
+
+    // 更新超大文件提示
+    setOversizedFiles(oversized);
     
     // 检查是否超过最大上传限制
     if (newFiles.length > maxUploadCount) {
@@ -192,6 +208,27 @@ export default function UploadSection({
                   <p className="text-sm text-amber-600 dark:text-amber-400">
                     一次最多只能上传 <span className="font-medium">{maxUploadCount}</span> 张图片。已自动选择前 {maxUploadCount} 张。
                   </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {oversizedFiles.length > 0 && (
+            <div className="mb-6 p-4 rounded-xl bg-linear-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 shadow-xs">
+              <div className="flex items-start">
+                <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-full mr-3 shrink-0">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-red-700 dark:text-red-300 mb-1">文件过大已跳过</p>
+                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+                    以下文件超过 10MB 限制，已自动跳过：
+                  </p>
+                  <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+                    {oversizedFiles.map((name, index) => (
+                      <li key={index}>{name}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
