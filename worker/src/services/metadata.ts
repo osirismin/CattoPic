@@ -334,25 +334,62 @@ export class MetadataService {
     return this.enrichWithTags(result.results || []);
   }
 
-  async deleteTagWithImages(name: string): Promise<{ deletedImages: number; imageIds: string[] }> {
-    // Get all images with this tag
-    const images = await this.getImagesByTag(name);
-    const imageIds = images.map(img => img.id);
+  /**
+   * Get minimal image info needed for deleting files, without loading tag lists.
+   * This avoids large IN(...) placeholder lists which can exceed D1's variable limit.
+   */
+  async getImagePathsByTag(tagName: string): Promise<Array<{
+    id: string;
+    paths: { original: string; webp: string | null; avif: string | null };
+  }>> {
+    const result = await this.db.prepare(`
+      SELECT DISTINCT
+        i.id,
+        i.path_original,
+        i.path_webp,
+        i.path_avif
+      FROM images i
+      JOIN image_tags it ON i.id = it.image_id
+      JOIN tags t ON it.tag_id = t.id
+      WHERE t.name = ?
+    `).bind(tagName).all<{
+      id: string;
+      path_original: string;
+      path_webp: string | null;
+      path_avif: string | null;
+    }>();
 
-    // Delete all images (CASCADE will handle image_tags)
-    if (imageIds.length > 0) {
-      const placeholders = imageIds.map(() => '?').join(',');
-      await this.db.prepare(`
-        DELETE FROM images WHERE id IN (${placeholders})
-      `).bind(...imageIds).run();
-    }
+    return (result.results || []).map((row) => ({
+      id: row.id,
+      paths: {
+        original: row.path_original,
+        webp: row.path_webp,
+        avif: row.path_avif,
+      },
+    }));
+  }
 
-    // Delete the tag itself
+  /**
+   * Delete a tag and all images associated with it.
+   * Uses subqueries to avoid exceeding SQLite/D1 variable limits.
+   */
+  async deleteTagWithImages(name: string): Promise<{ deletedImages: number }> {
+    const deleteImagesResult = await this.db.prepare(`
+      DELETE FROM images
+      WHERE id IN (
+        SELECT it.image_id
+        FROM image_tags it
+        JOIN tags t ON it.tag_id = t.id
+        WHERE t.name = ?
+      )
+    `).bind(name).run();
+
+    // Delete the tag itself (CASCADE cleans up any remaining image_tags)
     await this.db.prepare(`
       DELETE FROM tags WHERE name = ?
     `).bind(name).run();
 
-    return { deletedImages: imageIds.length, imageIds };
+    return { deletedImages: deleteImagesResult.meta?.changes || 0 };
   }
 
   async batchUpdateTags(imageIds: string[], addTags: string[], removeTags: string[]): Promise<number> {
@@ -445,20 +482,28 @@ export class MetadataService {
     if (rows.length === 0) return [];
 
     const imageIds = rows.map(r => r.id);
-    const placeholders = imageIds.map(() => '?').join(',');
-
-    const tagsResult = await this.db.prepare(`
-      SELECT it.image_id, t.name FROM image_tags it
-      JOIN tags t ON it.tag_id = t.id
-      WHERE it.image_id IN (${placeholders})
-    `).bind(...imageIds).all<{ image_id: string; name: string }>();
-
     const tagMap = new Map<string, string[]>();
-    for (const row of tagsResult.results || []) {
-      if (!tagMap.has(row.image_id)) {
-        tagMap.set(row.image_id, []);
+
+    // D1/SQLite has a limit on the number of bound variables per statement.
+    // Chunk to avoid `too many SQL variables` for large tag/image sets.
+    const chunkSize = 90;
+
+    for (let i = 0; i < imageIds.length; i += chunkSize) {
+      const chunk = imageIds.slice(i, i + chunkSize);
+      const placeholders = chunk.map(() => '?').join(',');
+
+      const tagsResult = await this.db.prepare(`
+        SELECT it.image_id, t.name FROM image_tags it
+        JOIN tags t ON it.tag_id = t.id
+        WHERE it.image_id IN (${placeholders})
+      `).bind(...chunk).all<{ image_id: string; name: string }>();
+
+      for (const row of tagsResult.results || []) {
+        if (!tagMap.has(row.image_id)) {
+          tagMap.set(row.image_id, []);
+        }
+        tagMap.get(row.image_id)!.push(row.name);
       }
-      tagMap.get(row.image_id)!.push(row.name);
     }
 
     return rows.map(row => this.rowToMetadata(row, tagMap.get(row.id) || []));

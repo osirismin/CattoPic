@@ -106,7 +106,7 @@ export async function deleteTagHandler(c: Context<{ Bindings: Env }>): Promise<R
     const metadata = new MetadataService(c.env.DB);
 
     // 1. 获取关联图片（一次查询，保存路径供队列使用）
-    const images = await metadata.getImagesByTag(name);
+    const images = await metadata.getImagePathsByTag(name);
     const imagePaths = images.map(img => ({
       id: img.id,
       paths: {
@@ -125,11 +125,15 @@ export async function deleteTagHandler(c: Context<{ Bindings: Env }>): Promise<R
 
     // 4. 异步删除 R2 文件（通过 Queue 后台处理）
     if (imagePaths.length > 0) {
-      await c.env.DELETE_QUEUE.send({
-        type: 'delete_tag_images',
-        tagName: name,
-        imagePaths: imagePaths,
-      });
+      // Avoid large queue payloads by chunking
+      const chunkSize = 50;
+      for (let i = 0; i < imagePaths.length; i += chunkSize) {
+        await c.env.DELETE_QUEUE.send({
+          type: 'delete_tag_images',
+          tagName: name,
+          imagePaths: imagePaths.slice(i, i + chunkSize),
+        });
+      }
     }
 
     return successResponse({
