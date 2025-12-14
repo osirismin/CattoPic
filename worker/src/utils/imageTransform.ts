@@ -53,6 +53,8 @@ function buildCdnCgiOptionsString(options: {
   const parts: string[] = [
     `format=${options.format}`,
     `quality=${clampInt(options.quality, 1, 100)}`,
+    'metadata=keep',
+    'onerror=continue',
   ];
 
   if (options.width && options.height) {

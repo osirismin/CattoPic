@@ -1,13 +1,9 @@
 import type { Context } from 'hono';
 import type { Env } from '../types';
-import { StorageService } from '../services/storage';
 import { MetadataService } from '../services/metadata';
-import { ImageProcessor } from '../services/imageProcessor';
 import { errorResponse } from '../utils/response';
 import { parseTags, isMobileDevice, getBestFormat } from '../utils/validation';
 import { buildImageUrls } from '../utils/imageTransform';
-
-const CLOUDFLARE_IMAGES_MAX_BYTES = 10 * 1024 * 1024;
 
 // GET /api/random - Get random image (PUBLIC - no auth required)
 export async function randomHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
@@ -50,92 +46,46 @@ export async function randomHandler(c: Context<{ Bindings: Env }>): Promise<Resp
       baseUrl,
       image,
       options: {
-        generateWebp: !!image.paths.webp || image.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
-        generateAvif: !!image.paths.avif || image.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
+        generateWebp: !!image.paths.webp,
+        generateAvif: !!image.paths.avif,
       },
     });
 
-    // Determine format to serve
     let targetUrl: string;
-    let r2Key: string | null = null;
-    let contentTypeFallback: string;
 
     if (image.format === 'gif') {
       // Always serve original for GIF
-      r2Key = image.paths.original;
       targetUrl = urls.original;
-      contentTypeFallback = 'image/gif';
     } else {
       // Determine best format based on Accept header or explicit format param
-      let format: 'original' | 'webp' | 'avif';
-
-      if (formatParam === 'webp' || formatParam === 'avif' || formatParam === 'original') {
-        format = formatParam;
+      if (formatParam === 'original') {
+        targetUrl = urls.original;
+      } else if (formatParam === 'webp') {
+        targetUrl = urls.webp || urls.original;
+      } else if (formatParam === 'avif') {
+        targetUrl = urls.avif || urls.original;
       } else {
         const acceptHeader = c.req.header('Accept');
-        format = getBestFormat(acceptHeader);
-      }
-
-      switch (format) {
-        case 'avif':
-          targetUrl = urls.avif || urls.original;
-          contentTypeFallback = urls.avif ? 'image/avif' : ImageProcessor.getContentType(image.format);
-          if (!urls.avif) {
-            r2Key = image.paths.original;
-          } else if (image.paths.avif) {
-            const isMarker = image.paths.avif === image.paths.original && image.format !== 'avif';
-            r2Key = isMarker ? null : image.paths.avif;
-          } else {
-            r2Key = null;
-          }
-          break;
-        case 'webp':
-          targetUrl = urls.webp || urls.original;
-          contentTypeFallback = urls.webp ? 'image/webp' : ImageProcessor.getContentType(image.format);
-          if (!urls.webp) {
-            r2Key = image.paths.original;
-          } else if (image.paths.webp) {
-            const isMarker = image.paths.webp === image.paths.original && image.format !== 'webp';
-            r2Key = isMarker ? null : image.paths.webp;
-          } else {
-            r2Key = null;
-          }
-          break;
-        default:
-          r2Key = image.paths.original;
+        const best = getBestFormat(acceptHeader);
+        if (best === 'avif' && urls.avif) {
+          targetUrl = urls.avif;
+        } else if (best === 'webp' && urls.webp) {
+          targetUrl = urls.webp;
+        } else {
           targetUrl = urls.original;
-          contentTypeFallback = ImageProcessor.getContentType(image.format);
+        }
       }
     }
 
-    // If we have a concrete R2 key, serve from R2 binding (no egress).
-    if (r2Key) {
-      const storage = new StorageService(c.env.R2_BUCKET);
-      const file = await storage.get(r2Key);
-      if (!file) {
-        return errorResponse('Image file not found', 404);
-      }
-
-      return new Response(file.body, {
-        headers: {
-          'Content-Type': contentTypeFallback,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
-
-    // Otherwise (Transform-URL), proxy the transformed response.
-    const upstream = await fetch(targetUrl);
-    if (!upstream.ok || !upstream.body) {
-      console.error('Random handler upstream failed:', upstream.status, targetUrl);
+    if (!targetUrl) {
       return errorResponse('Image file not found', 404);
     }
 
-    const contentType = upstream.headers.get('Content-Type') || contentTypeFallback;
-    return new Response(upstream.body, {
+    // Redirect instead of proxying: avoids fetching transformed URLs from within the Worker.
+    return new Response(null, {
+      status: 302,
       headers: {
-        'Content-Type': contentType,
+        Location: targetUrl,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Access-Control-Allow-Origin': '*',
       },

@@ -6,8 +6,6 @@ import { successResponse, errorResponse, notFoundResponse } from '../utils/respo
 import { parseNumber, validateOrientation, parseTags, isValidUUID } from '../utils/validation';
 import { buildImageUrls } from '../utils/imageTransform';
 
-const CLOUDFLARE_IMAGES_MAX_BYTES = 10 * 1024 * 1024;
-
 // GET /api/images - List images with pagination and filters
 export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
@@ -46,8 +44,8 @@ export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Resp
           baseUrl,
           image: img,
           options: {
-            generateWebp: !!img.paths.webp || img.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
-            generateAvif: !!img.paths.avif || img.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
+            generateWebp: !!img.paths.webp,
+            generateAvif: !!img.paths.avif,
           },
         }),
       }
@@ -110,8 +108,8 @@ export async function imageDetailHandler(c: Context<{ Bindings: Env }>): Promise
             baseUrl,
             image,
             options: {
-              generateWebp: !!image.paths.webp || image.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
-              generateAvif: !!image.paths.avif || image.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
+              generateWebp: !!image.paths.webp,
+              generateAvif: !!image.paths.avif,
             },
           }),
         }
@@ -182,8 +180,8 @@ export async function updateImageHandler(c: Context<{ Bindings: Env }>): Promise
             baseUrl,
             image: updated,
             options: {
-              generateWebp: !!updated.paths.webp || updated.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
-              generateAvif: !!updated.paths.avif || updated.sizes.original > CLOUDFLARE_IMAGES_MAX_BYTES,
+              generateWebp: !!updated.paths.webp,
+              generateAvif: !!updated.paths.avif,
             },
           }),
         }
