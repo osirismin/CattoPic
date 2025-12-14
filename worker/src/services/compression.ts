@@ -109,7 +109,7 @@ export class CompressionService {
 
     // Generate WebP first; AVIF is more failure-prone, so run after WebP to reduce concurrent load.
     const webpResult = opts.generateWebp
-      ? await this.withRetry('WebP compression', () => this.compressToFormat(data, 'webp', opts.quality, targetDims), { attempts: 2 })
+      ? await this.withRetry('WebP compression', () => this.compressToFormat(data, 'image/webp', opts.quality, targetDims), { attempts: 2 })
         .catch((e) => {
           console.error('WebP compression failed:', e);
           return null;
@@ -117,7 +117,7 @@ export class CompressionService {
       : null;
 
     const avifResult = opts.generateAvif
-      ? await this.withRetry('AVIF compression', () => this.compressToFormat(data, 'avif', opts.quality, avifDims), { attempts: 3 })
+      ? await this.withRetry('AVIF compression', () => this.compressToFormat(data, 'image/avif', opts.quality, avifDims), { attempts: 3 })
         .catch((e) => {
           console.error('AVIF compression failed:', e);
           return null;
@@ -135,7 +135,7 @@ export class CompressionService {
    */
   private async compressToFormat(
     data: ArrayBuffer,
-    format: 'webp' | 'avif',
+    format: 'image/webp' | 'image/avif',
     quality: number,
     dimensions: { width: number; height: number }
   ): Promise<CompressedImage> {
