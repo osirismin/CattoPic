@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Use Cloudflare Transform Images URL (`/cdn-cgi/image/...`) as a fallback WebP/AVIF delivery method when stored variants are missing (e.g. uploads over 10MB).
 - `/api/random` now redirects (302) to the selected image URL instead of proxying the image bytes (more reliable for transformed variants).
+- Disable Next.js image optimization since images are already delivered as transformed URLs.
+- Transform-URL parameters now follow the configured settings (no extra flags; no forced AVIF resize unless a max size is specified).
 
 ### Fixed
 

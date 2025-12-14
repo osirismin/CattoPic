@@ -45,7 +45,8 @@ const nextConfig = {
   reactStrictMode: true,
   output: isStaticExport ? 'export' : undefined,
   images: {
-    unoptimized: isStaticExport,
+    // Disable Next.js image optimization; images are already delivered as transformed URLs.
+    unoptimized: true,
     remotePatterns: remotePatterns
   },
   env: {

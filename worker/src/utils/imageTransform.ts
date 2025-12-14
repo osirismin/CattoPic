@@ -53,8 +53,6 @@ function buildCdnCgiOptionsString(options: {
   const parts: string[] = [
     `format=${options.format}`,
     `quality=${clampInt(options.quality, 1, 100)}`,
-    'metadata=keep',
-    'onerror=continue',
   ];
 
   if (options.width && options.height) {
@@ -140,16 +138,16 @@ export function buildImageUrls(params: {
     if (formatLower === 'avif') return originalUrl;
     if (!canTransformFromOriginal) return '';
 
-    const avifMaxWidth = maxWidth > 0 ? Math.min(maxWidth, 1600) : 1600;
-    const avifMaxHeight = maxHeight > 0 ? Math.min(maxHeight, 1600) : 1600;
-    const dims = calculateDimensions(image.width, image.height, avifMaxWidth, avifMaxHeight);
+    const dims = hasResizeLimit
+      ? calculateDimensions(image.width, image.height, maxWidth, maxHeight)
+      : undefined;
 
     const optionsString = buildCdnCgiOptionsString({
       format: 'avif',
       quality,
-      width: dims.width,
-      height: dims.height,
-      fit: 'scale-down',
+      width: dims?.width,
+      height: dims?.height,
+      fit: dims ? 'scale-down' : undefined,
     });
 
     return buildTransformedUrl(originalUrl, optionsString);

@@ -19,6 +19,8 @@
 
 - 当 WebP/AVIF 文件未生成/缺失时（例如超过 10MB 的上传），改用 Cloudflare Transform Images URL（`/cdn-cgi/image/...`）作为兜底输出方式。
 - `/api/random` 改为 302 重定向到实际图片 URL（不再由 Worker 代理回源返回图片字节，Transform-URL 场景更稳定）。
+- 关闭 Next.js 图片优化（图片已使用 Transform-URL 输出，无需再二次优化）。
+- Transform-URL 参数改为严格按配置输出（不再附加额外参数；未设置最大尺寸时不强制 AVIF 缩放）。
 
 ### 修复
 
